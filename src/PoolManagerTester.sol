@@ -31,13 +31,14 @@ contract PoolManagerTester {
         bytes actionData;
     }
 
-    event DebugCheck(uint256 index);
-
     constructor(address poolManagerAddress, PoolKey memory key) {
         poolManager = IPoolManager(poolManagerAddress);
         poolKey = key;
     }
 
+    /**
+     * Run the ModifyPosition operation
+     */
     function runMP(int24 tickLower, int24 tickUpper, int256 liquidityDelta) external returns (bytes memory result) {
         IPoolManager.ModifyPositionParams memory mpParams = IPoolManager.ModifyPositionParams({
             tickLower: tickLower,   
@@ -47,6 +48,9 @@ contract PoolManagerTester {
         return poolManager.lock(abi.encode(GenericCallbackData(msg.sender, poolKey, ActionType.actionModifyPosition, abi.encode(mpParams))));
     }
     
+    /**
+     * Run the Swap
+     */
     function runSwap(bool zeroForOne, int256 amountSpecified, uint160 sqrtPriceLimitX96) external returns (bytes memory result) {
         IPoolManager.SwapParams memory swapParams = IPoolManager.SwapParams({
             zeroForOne: zeroForOne,
@@ -64,9 +68,9 @@ contract PoolManagerTester {
         
         BalanceDelta delta;
         if (data.actionType == ActionType.actionModifyPosition) {
-            delta = poolManager.modifyPosition(data.key, abi.decode(data.actionData, (IPoolManager.ModifyPositionParams)), ZERO_BYTES);
+            delta = poolManager.modifyPosition(data.key, abi.decode(data.actionData, (IPoolManager.ModifyPositionParams)), abi.encode(data.sender));
         } else if (data.actionType == ActionType.actionSwap) {
-            delta = poolManager.swap(data.key, abi.decode(data.actionData, (IPoolManager.SwapParams)), ZERO_BYTES);
+            delta = poolManager.swap(data.key, abi.decode(data.actionData, (IPoolManager.SwapParams)), abi.encode(data.sender));
         } else {
             revert InvalidActionType();
         }

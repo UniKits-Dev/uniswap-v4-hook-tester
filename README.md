@@ -10,9 +10,28 @@ In this case, a contract is necessary to be built to execute the on-chain operat
 
 ```bash
 forge build
-
+forge script script/DeployAndRun.s.sol  --broadcast --fork-url http://localhost:8545 --code-size-limit 300000 -vvvvv
 ```
 
+## Basis
+
+```
+PoolKey memory keyToAdd = PoolKey({
+  currency0: currency0,
+  currency1: currency1,
+  fee: 3000,
+  hooks: IHooks(address(lensAuthHook)),
+  tickSpacing: 1
+});
+
+PoolManagerTester tester = new PoolManagerTester(address(poolManager), keyToAdd);
+
+//modifyPosition
+tester.runMP(73781, 74959, 1 ether); // 1600 1800
+
+// Swap
+tester.runSwap(true, 100, SQRT_RATIO_1_1);
+```
 
 ### Thanks
 
