@@ -11,6 +11,7 @@ import {Currency, CurrencyLibrary} from "@uniswap/v4-core/contracts/types/Curren
 import {PoolKey} from "@uniswap/v4-core/contracts/types/PoolKey.sol";
 import {MockERC20} from "@uniswap/v4-core/test/foundry-tests/utils/MockERC20.sol";
 import {Hooks} from "@uniswap/v4-core/contracts/libraries/Hooks.sol";
+import {Counter} from "../src/Counter.sol";
 import {HookDeployer} from "../test/utils/HookDeployer.sol";
 
 
@@ -25,15 +26,12 @@ contract DeployAndRunScript is BaseScript {
 
     function run() public broadcaster {
         
+        // init 
         poolManager = new PoolManager(500000);
-
-        // poolManager = IPoolManager();
+        // poolManager = IPoolManager(YOUR_ADDRESS);
 
         MockERC20 tokenA = new MockERC20("TestA", "TA", 18, 100 ether);
         MockERC20 tokenB = new MockERC20("TestB", "TB", 18, 100 ether);
-
-        // tokenA.approve(address(poolManager), 100 ether);
-        // tokenB.approve(address(poolManager), 100 ether);
 
         Currency currency0 = Currency.wrap(address(tokenA));
         Currency currency1 = Currency.wrap(address(tokenB));
@@ -48,26 +46,23 @@ contract DeployAndRunScript is BaseScript {
         uint160 sqrtPriceLimitX96ToSet = 3266570274706945504500000000000;
 
         // Deploy Hooks
-        address lensHubAddress = 0x00CAC06Dd0BB4103f8b62D280fE9BCEE8f26fD59;
-        // LensAuthHook lensAuthHook = new LensAuthHook(poolManager, lensHubAddress);
-        
         uint160 flags = uint160(
-            Hooks.BEFORE_SWAP_FLAG | Hooks.BEFORE_MODIFY_POSITION_FLAG
+            Hooks.BEFORE_SWAP_FLAG | Hooks.AFTER_SWAP_FLAG | Hooks.BEFORE_MODIFY_POSITION_FLAG
+                | Hooks.AFTER_MODIFY_POSITION_FLAG
         );
-        bytes memory hookBytecode = abi.encodePacked(type(LensAuthHook).creationCode, abi.encode(address(poolManager), address(lensHubAddress)));
+        bytes memory hookBytecode = abi.encodePacked(type(Counter).creationCode, abi.encode(address(poolManager)));
 
         (address hookAddressPreCaculated, uint256 salt) = HookDeployer.mineSalt(CREATE2_DEPLOYER, flags, hookBytecode);
-        LensAuthHook lensAuthHook = new LensAuthHook{salt: bytes32(salt)}(IPoolManager(address(poolManager)), address(lensHubAddress));
-        require(address(lensAuthHook) == hookAddressPreCaculated, "DeployLensAuthHookScript: hook address mismatch");
+        Counter counter = new Counter{salt: bytes32(salt)}(IPoolManager(address(poolManager)));
+        require(address(counter) == hookAddressPreCaculated, "DeployAndRunScript: hook address mismatch");
 
         // Hooks End
-        // address hookAddressPreCaculated = address(lensAuthHook);
 
         PoolKey memory keyToAdd = PoolKey({
             currency0: currency0,
             currency1: currency1,
             fee: 3000,
-            hooks: IHooks(address(lensAuthHook)),
+            hooks: IHooks(address(counter)),
             tickSpacing: 1
         });
 
